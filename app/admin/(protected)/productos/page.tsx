@@ -13,6 +13,23 @@ import { deleteCategory, saveCategory, setCategoryPublished } from "@/app/admin/
 import { ProductSelectionTable } from "@/app/admin/productos/product-selection-table";
 
 type AdminProductsPageProps = SearchPageProps<{ categoryId?: string; publication?: string }>;
+type ProductListItem = Awaited<ReturnType<typeof db.product.findMany>>[number];
+
+async function getAdminProductCategories() {
+  return db.category.findMany({
+    orderBy: { name: "asc" },
+    include: { products: { select: { id: true, isPublished: true } } },
+  });
+}
+
+type AdminCategoryList = Awaited<ReturnType<typeof getAdminProductCategories>>;
+type AdminCategory = AdminCategoryList[number];
+type AdminCategoryProduct = AdminCategory["products"][number];
+type CategorySummary = AdminCategory & {
+  totalProducts: number;
+  publishedProducts: number;
+  unpublishedProducts: number;
+};
 
 export default async function AdminProductsPage({
   searchParams,
@@ -27,15 +44,14 @@ export default async function AdminProductsPage({
 
   const [products, categories] = await Promise.all([
     db.product.findMany({ where: productWhere, include: { category: true }, orderBy: [{ isPublished: "desc" }, { name: "asc" }] }),
-    db.category.findMany({
-      orderBy: { name: "asc" },
-      include: { products: { select: { id: true, isPublished: true } } },
-    }),
+    getAdminProductCategories(),
   ]);
+  const typedProducts: ProductListItem[] = products;
+  const typedCategories: AdminCategory[] = categories;
 
-  const categorySummaries = categories.map((category) => {
+  const categorySummaries: CategorySummary[] = typedCategories.map((category) => {
     const totalProducts = category.products.length;
-    const publishedProducts = category.products.filter((product) => product.isPublished).length;
+    const publishedProducts = (category.products as AdminCategoryProduct[]).filter((product) => product.isPublished).length;
 
     return {
       ...category,
@@ -49,8 +65,8 @@ export default async function AdminProductsPage({
   const totalPublishedProducts = categorySummaries.reduce((total, category) => total + category.publishedProducts, 0);
   const activeFilterLabel = publication === "published" ? "publicados" : publication === "unpublished" ? "sin publicar" : "totales";
   const selectedCategory = categorySummaries.find((category) => category.id === categoryId) ?? null;
-  const filteredPublishedProducts = products.filter((product) => product.isPublished).length;
-  const filteredUnpublishedProducts = products.length - filteredPublishedProducts;
+  const filteredPublishedProducts = typedProducts.filter((product) => product.isPublished).length;
+  const filteredUnpublishedProducts = typedProducts.length - filteredPublishedProducts;
   const redirectToSearchParams = new URLSearchParams();
 
   if (categoryId !== "all") {
