@@ -1,0 +1,17 @@
+change: almacen-whatsapp-mvp
+status: archived
+phase: archived
+artifact_store: openspec
+archived_on: 2026-04-09
+archive_path: openspec/changes/archive/2026-04-09-almacen-whatsapp-mvp/
+verification:
+  verdict: PASS WITH WARNINGS
+  critical_issues: 0
+tasks:
+  total: 22
+  complete: 22
+source_of_truth:
+  synced_specs:
+    - storefront
+    - checkout
+    - admin

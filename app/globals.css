@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fffaf4;
+  --background-muted: #fef3e6;
+  --foreground: #2a211b;
+  --card: rgba(255, 255, 255, 0.92);
+  --card-strong: #ffffff;
+  --muted: #f4e4d2;
+  --muted-foreground: #6f6258;
+  --border: rgba(133, 95, 66, 0.14);
+  --primary: #d66d31;
+  --primary-strong: #b8531d;
+  --primary-foreground: #fff8f2;
+  --secondary: #23413a;
+  --secondary-foreground: #f6fcfa;
+  --success: #18794e;
+  --warning: #b66a0d;
+  --destructive: #c23a2b;
+  --ring: rgba(214, 109, 49, 0.28);
+  --shadow-soft: 0 20px 50px rgba(87, 52, 22, 0.08);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-muted: var(--background-muted);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-strong: var(--card-strong);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-brand: var(--primary);
+  --color-brand-strong: var(--primary-strong);
+  --color-brand-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(255, 214, 174, 0.45), transparent 35%),
+    linear-gradient(180deg, #fff8f0 0%, #fffaf4 42%, #fff6ee 100%);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: rgba(214, 109, 49, 0.18);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.surface-glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 250, 244, 0.88));
+  box-shadow: var(--shadow-soft);
+}
+
+.surface-dark {
+  background: linear-gradient(180deg, #2d241f 0%, #1e1916 100%);
+}
+
+.section-shell {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 248, 242, 0.92));
+  box-shadow: var(--shadow-soft);
+}

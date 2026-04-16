@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum StockMode {
+  in_stock
+  out_of_stock
+}
+
+enum PromotionType {
+  percentage
+  fixed
+}
+
+enum PromotionScope {
+  order
+  category
+  product
+}
+
+enum OrderStatus {
+  draft
+  placed
+  confirmed
+  preparing
+  ready
+  delivered
+  cancelled
+}
+
+enum FulfillmentType {
+  delivery
+  pickup
+}
+
+enum PaymentMethod {
+  cash
+  transfer
+  mercado_pago_link
+}
+
+model Category {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String?
+  isActive    Boolean     @default(true)
+  products    Product[]
+  promotions  Promotion[] @relation("PromotionCategories")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Product {
+  id                String        @id @default(cuid())
+  categoryId        String
+  sku               String?       @unique
+  name              String
+  slug              String        @unique
+  description       String?
+  shortDescription  String?
+  priceCents        Int
+  costCents         Int?
+  wholesalePriceCents Int?
+  compareAtCents    Int?
+  unitLabel         String?
+  stockQuantity     Float         @default(0)
+  minimumStockQuantity Float      @default(0)
+  stockMode         StockMode     @default(in_stock)
+  isFeatured        Boolean       @default(false)
+  isPublished       Boolean       @default(false)
+  isActive          Boolean       @default(true)
+  category          Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images            ProductImage[]
+  promotions        Promotion[]   @relation("PromotionProducts")
+  orderItems        OrderItem[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  alt       String
+  position  Int      @default(0)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Promotion {
+  id               String          @id @default(cuid())
+  code             String          @unique
+  name             String
+  description      String?
+  type             PromotionType
+  scope            PromotionScope
+  amount           Int
+  minSubtotalCents Int?            
+  startsAt         DateTime
+  endsAt           DateTime
+  isActive         Boolean         @default(true)
+  products         Product[]       @relation("PromotionProducts")
+  categories       Category[]      @relation("PromotionCategories")
+  orders           Order[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  fullName    String
+  phone       String?  @unique
+  email       String?
+  notes       String?
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id               String          @id @default(cuid())
+  code             String          @unique
+  channel          String          @default("storefront")
+  status           OrderStatus     @default(placed)
+  fulfillmentType  FulfillmentType
+  paymentMethod    PaymentMethod
+  customerId       String
+  promotionId      String?
+  addressLine      String?
+  postalCode       String?
+  notes            String?
+  internalNote     String?
+  subtotalCents    Int
+  discountCents    Int             @default(0)
+  deliveryFeeCents Int             @default(0)
+  totalCents       Int
+  whatsappUrl      String?
+  customer         Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  promotion        Promotion?      @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  items            OrderItem[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model OrderItem {
+  id               String   @id @default(cuid())
+  orderId          String
+  productId        String
+  productName      String
+  productSlug      String
+  unitPriceCents   Int
+  quantity         Int
+  lineTotalCents   Int
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+}
