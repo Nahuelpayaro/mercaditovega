@@ -1,4 +1,6 @@
-import type { OrderStatus } from "@prisma/client";
+export const orderStatuses = ["draft", "placed", "confirmed", "preparing", "ready", "delivered", "cancelled"] as const;
+
+export type OrderStatus = (typeof orderStatuses)[number];
 
 const transitions: Record<OrderStatus, OrderStatus[]> = {
   draft: ["placed", "cancelled"],

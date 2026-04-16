@@ -2,9 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { OrderStatus } from "@prisma/client";
 import { db } from "@/lib/db";
-import { assertValidStatusTransition } from "@/lib/orders/status-machine";
+import { assertValidStatusTransition, type OrderStatus } from "@/lib/orders/status-machine";
 
 export async function updateOrderStatus(formData: FormData) {
   const orderId = formData.get("orderId")?.toString();
