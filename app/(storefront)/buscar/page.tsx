@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { searchProducts } from "@/lib/storefront";
 
+type SearchProduct = Parameters<typeof ProductCard>[0]["product"];
+
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
-  const products = q ? await searchProducts(q) : [];
+  const products: SearchProduct[] = q ? await searchProducts(q) : [];
 
   return (
     <div className="space-y-6">
