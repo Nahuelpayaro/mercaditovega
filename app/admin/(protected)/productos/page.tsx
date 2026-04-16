@@ -208,7 +208,7 @@ export default async function AdminProductsPage({
               <Label htmlFor="categoryId">Filtrar por categoría</Label>
               <Select id="categoryId" name="categoryId" defaultValue={categoryId}>
                 <option value="all">Todas</option>
-                {categories.map((category) => (
+                {typedCategories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -261,7 +261,7 @@ export default async function AdminProductsPage({
             </div>
           </form>
 
-          {categories.map((category) => (
+          {typedCategories.map((category) => (
             <form key={category.id} action={saveCategory} className="grid gap-3 rounded-[24px] border border-border bg-white/80 p-4 md:grid-cols-5">
               <input type="hidden" name="id" value={category.id} />
               <Input name="name" defaultValue={category.name} required />
