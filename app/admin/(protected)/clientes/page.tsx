@@ -4,11 +4,20 @@ import { Table, TBody, TD, TH, THead } from "@/components/ui/table";
 import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/utils";
 
-export default async function AdminCustomersPage() {
-  const customers = await db.customer.findMany({
+async function getAdminCustomers() {
+  return db.customer.findMany({
     include: { orders: { orderBy: { createdAt: "desc" }, take: 3 } },
     orderBy: { updatedAt: "desc" },
   });
+}
+
+type CustomersPageData = Awaited<ReturnType<typeof getAdminCustomers>>;
+type CustomerRow = CustomersPageData[number];
+type CustomerOrderRow = CustomerRow["orders"][number];
+
+export default async function AdminCustomersPage() {
+  const customers = await getAdminCustomers();
+  const typedCustomers: CustomerRow[] = customers;
 
   return (
     <div className="space-y-6">
@@ -31,7 +40,7 @@ export default async function AdminCustomersPage() {
               </tr>
             </THead>
             <TBody>
-              {customers.map((customer) => (
+              {typedCustomers.map((customer) => (
                 <tr key={customer.id}>
                   <TD>{customer.fullName}</TD>
                   <TD>
@@ -42,7 +51,7 @@ export default async function AdminCustomersPage() {
                   </TD>
                   <TD>
                     <div className="space-y-1 text-xs text-muted-foreground">
-                      {customer.orders.map((order) => (
+                      {(customer.orders as CustomerOrderRow[]).map((order) => (
                         <p key={order.id}>
                           {order.code} · {order.status} · {formatDateTime(order.createdAt)}
                         </p>

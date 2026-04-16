@@ -6,11 +6,19 @@ import { Table, TBody, TD, TH, THead } from "@/components/ui/table";
 import { db } from "@/lib/db";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
-export default async function AdminOrdersPage() {
-  const orders = await db.order.findMany({
+async function getAdminOrders() {
+  return db.order.findMany({
     include: { customer: true },
     orderBy: { createdAt: "desc" },
   });
+}
+
+type OrdersPageData = Awaited<ReturnType<typeof getAdminOrders>>;
+type OrderRow = OrdersPageData[number];
+
+export default async function AdminOrdersPage() {
+  const orders = await getAdminOrders();
+  const typedOrders: OrderRow[] = orders;
 
   return (
     <div className="space-y-6">
@@ -31,7 +39,7 @@ export default async function AdminOrdersPage() {
               </tr>
             </THead>
             <TBody>
-              {orders.map((order) => (
+              {typedOrders.map((order) => (
                 <tr key={order.id}>
                   <TD>
                     <Link href={`/admin/pedidos/${order.id}`} className="font-semibold text-brand">

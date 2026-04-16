@@ -5,15 +5,23 @@ import { PageHeader } from "@/components/ui/page-header";
 import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 
+async function getDashboardRecentOrders() {
+  return db.order.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { customer: true } });
+}
+
+type DashboardOrders = Awaited<ReturnType<typeof getDashboardRecentOrders>>;
+type DashboardOrder = DashboardOrders[number];
+
 export default async function AdminDashboardPage() {
   const [orders, products, promos, customers] = await Promise.all([
-    db.order.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { customer: true } }),
+    getDashboardRecentOrders(),
     db.product.count(),
     db.promotion.count(),
     db.customer.count(),
   ]);
+  const typedOrders: DashboardOrder[] = orders;
 
-  const todayRevenue = orders.reduce((total, order) => total + order.totalCents, 0);
+  const todayRevenue = typedOrders.reduce((total, order) => total + order.totalCents, 0);
 
   return (
     <div className="space-y-6">
@@ -25,7 +33,7 @@ export default async function AdminDashboardPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard title="Pedidos recientes" value={String(orders.length)} helper="Últimos ingresos" />
+        <MetricCard title="Pedidos recientes" value={String(typedOrders.length)} helper="Últimos ingresos" />
         <MetricCard title="Productos" value={String(products)} helper="Catálogo activo + oculto" />
         <MetricCard title="Promos" value={String(promos)} helper="Campañas configuradas" />
         <MetricCard title="Clientes" value={String(customers)} helper="Base acumulada" />
@@ -37,7 +45,7 @@ export default async function AdminDashboardPage() {
             <CardTitle>Últimos pedidos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {orders.map((order) => (
+            {typedOrders.map((order) => (
               <div key={order.id} className="flex flex-col gap-3 rounded-[24px] border border-border bg-white/80 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="font-bold text-foreground">{order.code}</p>

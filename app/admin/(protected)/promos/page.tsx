@@ -6,12 +6,16 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Table, TBody, TD, TH, THead } from "@/components/ui/table";
 import { db } from "@/lib/db";
 
+type PromotionsPageData = Awaited<ReturnType<typeof db.promotion.findMany>>;
+type PromotionRow = PromotionsPageData[number];
+
 export default async function AdminPromotionsPage() {
   const promos = await db.promotion.findMany({ orderBy: { startsAt: "desc" } });
+  const typedPromos: PromotionRow[] = promos;
   const now = new Date();
-  const activePromos = promos.filter((promo) => promo.isActive).length;
-  const scheduledPromos = promos.filter((promo) => promo.startsAt > now).length;
-  const homeVisiblePromos = promos.filter((promo) => promo.isActive && promo.startsAt <= now && promo.endsAt >= now).length;
+  const activePromos = typedPromos.filter((promo) => promo.isActive).length;
+  const scheduledPromos = typedPromos.filter((promo) => promo.startsAt > now).length;
+  const homeVisiblePromos = typedPromos.filter((promo) => promo.isActive && promo.startsAt <= now && promo.endsAt >= now).length;
 
   return (
     <div className="space-y-6">
@@ -43,7 +47,7 @@ export default async function AdminPromotionsPage() {
           <CardTitle>Listado</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 overflow-x-auto">
-          {promos.length > 0 ? (
+          {typedPromos.length > 0 ? (
             <Table>
               <THead>
                 <tr>
@@ -56,7 +60,7 @@ export default async function AdminPromotionsPage() {
                 </tr>
               </THead>
               <TBody>
-                {promos.map((promo) => {
+                {typedPromos.map((promo) => {
                   const isVisibleInHome = promo.isActive && promo.startsAt <= now && promo.endsAt >= now;
 
                   return (
