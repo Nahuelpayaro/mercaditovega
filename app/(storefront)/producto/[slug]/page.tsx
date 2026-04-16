@@ -5,10 +5,13 @@ import { ArrowLeft } from "lucide-react";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ParamsPageProps } from "@/lib/next-page-props";
 import { getProductBySlug } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/utils";
 
-export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+type ProductPageProps = ParamsPageProps<{ slug: string }>;
+
+export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
 

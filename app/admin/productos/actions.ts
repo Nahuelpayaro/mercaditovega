@@ -14,6 +14,10 @@ function parseBoolean(value: FormDataEntryValue | null) {
   return value === "on" || value === "true";
 }
 
+function isNonEmptyString(value: string): value is string {
+  return value.length > 0;
+}
+
 function revalidateCatalogSurfaces() {
   revalidatePath("/admin/productos");
   revalidatePath("/");
@@ -137,7 +141,7 @@ export async function setSelectedProductsPublished(formData: FormData) {
       formData
         .getAll("productIds")
         .map((value) => value.toString())
-        .filter(Boolean),
+        .filter(isNonEmptyString),
     ),
   );
   const isPublished = parseBoolean(formData.get("isPublished"));

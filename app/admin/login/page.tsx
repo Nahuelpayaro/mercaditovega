@@ -7,13 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ADMIN_SESSION_COOKIE_NAME, hasValidAdminSession, sanitizeAdminNextPath } from "@/lib/admin-auth";
 import { publicEnv, serverEnv } from "@/lib/env";
+import { SearchPageProps } from "@/lib/next-page-props";
 
-type AdminLoginPageProps = {
-  searchParams: Promise<{
-    error?: string;
-    next?: string;
-  }>;
-};
+type AdminLoginPageProps = SearchPageProps<{ error?: string; next?: string }>;
 
 export default async function AdminLoginPage({ searchParams }: AdminLoginPageProps) {
   const params = await searchParams;

@@ -7,15 +7,16 @@ import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { db } from "@/lib/db";
+import { SearchPageProps } from "@/lib/next-page-props";
 import { cn } from "@/lib/utils";
 import { deleteCategory, saveCategory, setCategoryPublished } from "@/app/admin/productos/actions";
 import { ProductSelectionTable } from "@/app/admin/productos/product-selection-table";
 
+type AdminProductsPageProps = SearchPageProps<{ categoryId?: string; publication?: string }>;
+
 export default async function AdminProductsPage({
   searchParams,
-}: {
-  searchParams: Promise<{ categoryId?: string; publication?: string }>;
-}) {
+}: AdminProductsPageProps) {
   const { categoryId = "all", publication = "all" } = await searchParams;
 
   const productWhere = {

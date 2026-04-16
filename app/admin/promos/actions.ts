@@ -4,11 +4,15 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { promotionSchema } from "@/lib/validators/promotion";
 
+function isNonEmptyString(value: string): value is string {
+  return value.length > 0;
+}
+
 function readIds(formData: FormData, key: string) {
   return formData
     .getAll(key)
     .map((value) => value.toString())
-    .filter(Boolean);
+    .filter(isNonEmptyString);
 }
 
 export async function savePromotion(formData: FormData) {

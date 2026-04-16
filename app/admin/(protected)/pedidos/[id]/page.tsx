@@ -7,26 +7,33 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/db";
+import { ParamsAndSearchPageProps } from "@/lib/next-page-props";
 import { getAllowedTransitions } from "@/lib/orders/status-machine";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { updateOrderStatus } from "@/app/admin/pedidos/actions";
 
-export default async function AdminOrderDetailPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ statusError?: string; statusSuccess?: string }>;
-}) {
-  const { id } = await params;
-  const { statusError, statusSuccess } = await searchParams;
-  const order = await db.order.findUnique({
+type AdminOrderDetailPageProps = ParamsAndSearchPageProps<{ id: string }, { statusError?: string; statusSuccess?: string }>;
+async function getAdminOrderDetail(id: string) {
+  return db.order.findUnique({
     where: { id },
     include: { customer: true, items: true, promotion: true },
   });
+}
+
+type AdminOrderDetail = NonNullable<Awaited<ReturnType<typeof getAdminOrderDetail>>>;
+type AdminOrderItem = AdminOrderDetail["items"][number];
+
+export default async function AdminOrderDetailPage({
+  params,
+  searchParams,
+}: AdminOrderDetailPageProps) {
+  const { id } = await params;
+  const { statusError, statusSuccess } = await searchParams;
+  const order = await getAdminOrderDetail(id);
 
   if (!order) notFound();
 
+  const items: AdminOrderItem[] = order.items;
   const allowedTransitions = getAllowedTransitions(order.status);
 
   return (
@@ -46,7 +53,7 @@ export default async function AdminOrderDetailPage({
               <span className="text-sm text-muted-foreground">{formatDateTime(order.createdAt)}</span>
             </div>
             <div className="space-y-2">
-              {order.items.map((item) => (
+              {items.map((item) => (
                 <div key={item.id} className="flex justify-between rounded-[22px] border border-border p-3">
                   <span>
                     {item.quantity} x {item.productName}

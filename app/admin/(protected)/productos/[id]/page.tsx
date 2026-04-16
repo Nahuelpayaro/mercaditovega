@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import { ProductForm } from "@/app/admin/productos/product-form";
+import { ParamsPageProps } from "@/lib/next-page-props";
 import { db } from "@/lib/db";
 
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+type EditProductPageProps = ParamsPageProps<{ id: string }>;
+
+export default async function EditProductPage({ params }: EditProductPageProps) {
   const { id } = await params;
   const [product, categories] = await Promise.all([
     db.product.findUnique({ include: { images: true }, where: { id } }),

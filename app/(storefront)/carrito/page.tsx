@@ -5,6 +5,10 @@ import { getActivePromotions } from "@/lib/storefront";
 
 type ProductCategoryMapItem = { id: string; categoryId: string };
 
+function toProductCategoryMap(items: ProductCategoryMapItem[]): Record<string, string> {
+  return Object.fromEntries(items.map((item) => [item.id, item.categoryId] as const)) as Record<string, string>;
+}
+
 export default async function CartRoute() {
   const [promotions, products] = await Promise.all([
     getActivePromotions(),
@@ -15,7 +19,7 @@ export default async function CartRoute() {
   return (
     <div className="space-y-4">
       <PageHeader eyebrow="Carrito" title="Tu pedido en curso" description="Se guarda en este dispositivo para que sigas después, sin volver a empezar." />
-      <CartPage promotions={promotions} productCategories={Object.fromEntries(typedProducts.map((item) => [item.id, item.categoryId]))} />
+      <CartPage promotions={promotions} productCategories={toProductCategoryMap(typedProducts)} />
     </div>
   );
 }

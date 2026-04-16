@@ -5,14 +5,21 @@ import { CheckCircle2 } from "lucide-react";
 import { OrderSuccessClient } from "@/components/storefront/order-success-client";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ParamsPageProps } from "@/lib/next-page-props";
 import { getOrderByCode } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/utils";
 
-export default async function OrderConfirmationPage({ params }: { params: Promise<{ code: string }> }) {
+type OrderConfirmationPageProps = ParamsPageProps<{ code: string }>;
+type OrderData = NonNullable<Awaited<ReturnType<typeof getOrderByCode>>>;
+type OrderItem = OrderData["items"][number];
+
+export default async function OrderConfirmationPage({ params }: OrderConfirmationPageProps) {
   const { code } = await params;
   const order = await getOrderByCode(code);
 
   if (!order) notFound();
+
+  const items: OrderItem[] = order.items;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -35,7 +42,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
             <p className="text-3xl font-black text-foreground">{order.code}</p>
           </div>
           <div className="space-y-2 text-sm">
-            {order.items.map((item) => (
+            {items.map((item) => (
               <div key={item.id} className="flex justify-between gap-3 rounded-[18px] border border-border bg-white/80 px-3 py-3">
                 <span>
                   {item.quantity} x {item.productName}

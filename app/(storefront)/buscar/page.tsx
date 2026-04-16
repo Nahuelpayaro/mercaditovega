@@ -6,11 +6,13 @@ import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
+import { SearchPageProps } from "@/lib/next-page-props";
 import { searchProducts } from "@/lib/storefront";
 
 type SearchProduct = Parameters<typeof ProductCard>[0]["product"];
+type StorefrontSearchPageProps = SearchPageProps<{ q?: string }>;
 
-export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function SearchPage({ searchParams }: StorefrontSearchPageProps) {
   const { q = "" } = await searchParams;
   const products: SearchProduct[] = q ? await searchProducts(q) : [];
 

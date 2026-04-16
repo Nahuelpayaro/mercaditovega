@@ -10,6 +10,10 @@ export type CheckoutActionState = {
   errors?: Record<string, string>;
 };
 
+function toErrorRecord(entries: Array<readonly [string, string]>): Record<string, string> {
+  return Object.fromEntries(entries) as Record<string, string>;
+}
+
 export async function submitCheckout(_: CheckoutActionState, formData: FormData): Promise<CheckoutActionState> {
   const itemsRaw = formData.get("items")?.toString() || "[]";
 
@@ -27,7 +31,7 @@ export async function submitCheckout(_: CheckoutActionState, formData: FormData)
   });
 
   if (!parsed.success) {
-    const errors = Object.fromEntries(parsed.error.issues.map((issue) => [issue.path[0].toString(), issue.message]));
+    const errors = toErrorRecord(parsed.error.issues.map((issue) => [issue.path[0].toString(), issue.message] as const));
     return { status: "error", message: "Revisá los campos marcados.", errors };
   }
 
