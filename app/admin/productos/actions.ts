@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { ZodError } from "zod";
 import { db } from "@/lib/db";
 import {
   categorySchema,
@@ -37,66 +38,87 @@ function getAdminProductsRedirectPath(formData: FormData) {
 }
 
 export async function saveProduct(formData: FormData) {
-  const parsed = productSchema.parse({
-    id: formData.get("id") || undefined,
-    categoryId: formData.get("categoryId"),
-    sku: formData.get("sku") || undefined,
-    name: formData.get("name"),
-    slug: formData.get("slug") || undefined,
-    description: formData.get("description") || undefined,
-    shortDescription: formData.get("shortDescription") || undefined,
-    priceCents: formData.get("priceCents"),
-    costCents: formData.get("costCents") || undefined,
-    wholesalePriceCents: formData.get("wholesalePriceCents") || undefined,
-    compareAtCents: formData.get("compareAtCents") || undefined,
-    unitLabel: formData.get("unitLabel") || undefined,
-    stockQuantity: formData.get("stockQuantity") || 0,
-    minimumStockQuantity: formData.get("minimumStockQuantity") || 0,
-    stockMode: formData.get("stockMode"),
-    isFeatured: parseBoolean(formData.get("isFeatured")),
-    isPublished: parseBoolean(formData.get("isPublished")),
-    isActive: parseBoolean(formData.get("isActive")),
-    imageUrl: formData.get("imageUrl") || undefined,
-    imageAlt: formData.get("imageAlt") || undefined,
-  });
+  const existingId = formData.get("id")?.toString() || undefined;
+  const fallbackPath = existingId ? `/admin/productos/${existingId}` : "/admin/productos/nuevo";
+  let redirectPath: string | undefined;
 
-  const input = normalizeProductInput(parsed);
+  try {
+    const parsed = productSchema.parse({
+      id: formData.get("id") || undefined,
+      categoryId: formData.get("categoryId"),
+      sku: formData.get("sku") || undefined,
+      name: formData.get("name"),
+      slug: formData.get("slug") || undefined,
+      description: formData.get("description") || undefined,
+      shortDescription: formData.get("shortDescription") || undefined,
+      priceCents: formData.get("priceCents"),
+      costCents: formData.get("costCents") || undefined,
+      wholesalePriceCents: formData.get("wholesalePriceCents") || undefined,
+      compareAtCents: formData.get("compareAtCents") || undefined,
+      unitLabel: formData.get("unitLabel") || undefined,
+      stockQuantity: formData.get("stockQuantity") || 0,
+      minimumStockQuantity: formData.get("minimumStockQuantity") || 0,
+      stockMode: formData.get("stockMode"),
+      isFeatured: parseBoolean(formData.get("isFeatured")),
+      isPublished: parseBoolean(formData.get("isPublished")),
+      isActive: parseBoolean(formData.get("isActive")),
+      imageUrl: formData.get("imageUrl") || undefined,
+      imageAlt: formData.get("imageAlt") || undefined,
+    });
 
-  const data = {
-    categoryId: input.categoryId,
-    sku: input.sku,
-    name: input.name,
-    slug: input.slug,
-    description: input.description,
-    shortDescription: input.shortDescription,
-    priceCents: input.priceCents,
-    costCents: input.costCents,
-    wholesalePriceCents: input.wholesalePriceCents,
-    compareAtCents: input.compareAtCents,
-    unitLabel: input.unitLabel,
-    stockQuantity: input.stockQuantity,
-    minimumStockQuantity: input.minimumStockQuantity,
-    stockMode: input.stockMode,
-    isFeatured: input.isFeatured,
-    isPublished: input.isPublished,
-    isActive: input.isActive,
-  };
+    const input = normalizeProductInput(parsed);
 
-  if (input.id) {
-    await db.product.update({ where: { id: input.id }, data });
+    const data = {
+      categoryId: input.categoryId,
+      sku: input.sku,
+      name: input.name,
+      slug: input.slug,
+      description: input.description,
+      shortDescription: input.shortDescription,
+      priceCents: input.priceCents,
+      costCents: input.costCents,
+      wholesalePriceCents: input.wholesalePriceCents,
+      compareAtCents: input.compareAtCents,
+      unitLabel: input.unitLabel,
+      stockQuantity: input.stockQuantity,
+      minimumStockQuantity: input.minimumStockQuantity,
+      stockMode: input.stockMode,
+      isFeatured: input.isFeatured,
+      isPublished: input.isPublished,
+      isActive: input.isActive,
+    };
 
-    if (input.imageUrl) {
-      await db.productImage.deleteMany({ where: { productId: input.id } });
-      await db.productImage.create({ data: { productId: input.id, url: input.imageUrl, alt: input.imageAlt ?? input.name } });
+    let productId = input.id;
+
+    if (input.id) {
+      await db.product.update({ where: { id: input.id }, data });
+
+      if (input.imageUrl) {
+        await db.productImage.deleteMany({ where: { productId: input.id } });
+        await db.productImage.create({ data: { productId: input.id, url: input.imageUrl, alt: input.imageAlt ?? input.name } });
+      }
+    } else {
+      const product = await db.product.create({ data });
+      productId = product.id;
+
+      if (input.imageUrl) {
+        await db.productImage.create({ data: { productId: product.id, url: input.imageUrl, alt: input.imageAlt ?? input.name } });
+      }
     }
-  } else {
-    const product = await db.product.create({ data });
-    if (input.imageUrl) {
-      await db.productImage.create({ data: { productId: product.id, url: input.imageUrl, alt: input.imageAlt ?? input.name } });
-    }
+
+    revalidateCatalogSurfaces();
+    redirectPath = `/admin/productos/${productId}?statusSuccess=${encodeURIComponent("Producto guardado correctamente.")}`;
+  } catch (error) {
+    const message = error instanceof ZodError
+      ? error.issues[0]?.message || "Revisá los datos del producto."
+      : error instanceof Error
+        ? error.message
+        : "No pudimos guardar el producto.";
+
+    redirect(`${fallbackPath}?statusError=${encodeURIComponent(message)}`);
   }
 
-  revalidateCatalogSurfaces();
+  redirect(redirectPath ?? fallbackPath);
 }
 
 export async function setProductPublished(formData: FormData) {

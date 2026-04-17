@@ -7,10 +7,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { deleteProduct, saveProduct } from "@/app/admin/productos/actions";
+import { ProductImageFields } from "@/app/admin/productos/product-image-fields";
 
 export function ProductForm({
   categories,
   product,
+  statusError,
+  statusSuccess,
 }: {
   categories: { id: string; name: string }[];
   product?: {
@@ -34,6 +37,8 @@ export function ProductForm({
     isActive: boolean;
     images: { url: string; alt: string }[];
   };
+  statusError?: string;
+  statusSuccess?: string;
 }) {
   return (
     <div className="space-y-6">
@@ -47,6 +52,16 @@ export function ProductForm({
           <CardTitle>{product ? "Editar producto" : "Nuevo producto"}</CardTitle>
         </CardHeader>
         <CardContent>
+          {statusError ? (
+            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {statusError}
+            </div>
+          ) : null}
+          {statusSuccess ? (
+            <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {statusSuccess}
+            </div>
+          ) : null}
           <form action={saveProduct} className="grid gap-4 md:grid-cols-2">
             <input type="hidden" name="id" value={product?.id ?? ""} />
             <div>
@@ -114,14 +129,11 @@ export function ProductForm({
               <Label htmlFor="description">Descripción</Label>
               <Textarea id="description" name="description" defaultValue={product?.description ?? ""} />
             </div>
-            <div>
-              <Label htmlFor="imageUrl">Imagen URL</Label>
-              <Input id="imageUrl" name="imageUrl" defaultValue={product?.images[0]?.url ?? ""} />
-            </div>
-            <div>
-              <Label htmlFor="imageAlt">Alt imagen</Label>
-              <Input id="imageAlt" name="imageAlt" defaultValue={product?.images[0]?.alt ?? ""} />
-            </div>
+            <ProductImageFields
+              initialImageUrl={product?.images[0]?.url ?? ""}
+              initialImageAlt={product?.images[0]?.alt ?? ""}
+              initialProductName={product?.name}
+            />
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="isFeatured" defaultChecked={product?.isFeatured} /> Destacado
             </label>
