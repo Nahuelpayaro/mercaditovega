@@ -21,13 +21,13 @@ describe("cart storage", () => {
     (globalThis as { window?: unknown }).window = { localStorage };
 
     writeCartStorage({
-      items: [{ productId: "prod-1", slug: "yerba", name: "Yerba", priceCents: 2500, quantity: 2 }],
+      items: [{ productId: "prod-1", categoryId: "cat-1", slug: "yerba", name: "Yerba", priceCents: 2500, quantity: 2 }],
       promoCode: "BARRIO10",
     });
 
     expect(localStorage.getItem(CART_STORAGE_KEY)).toContain("BARRIO10");
     expect(readCartStorage()).toEqual({
-      items: [{ productId: "prod-1", slug: "yerba", name: "Yerba", priceCents: 2500, quantity: 2 }],
+      items: [{ productId: "prod-1", categoryId: "cat-1", slug: "yerba", name: "Yerba", priceCents: 2500, quantity: 2 }],
       promoCode: "BARRIO10",
     });
   });

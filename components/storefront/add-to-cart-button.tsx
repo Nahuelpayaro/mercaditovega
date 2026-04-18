@@ -6,6 +6,7 @@ import { useCart } from "@/components/storefront/cart-provider";
 type Props = {
   product: {
     id: string;
+    categoryId: string;
     slug: string;
     name: string;
     priceCents: number;
@@ -26,6 +27,7 @@ export function AddToCartButton({ product, compact = false }: Props) {
       onClick={() =>
         addItem({
           productId: product.id,
+          categoryId: product.categoryId,
           slug: product.slug,
           name: product.name,
           priceCents: product.priceCents,

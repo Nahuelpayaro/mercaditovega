@@ -20,7 +20,7 @@ import { CartPage } from "@/components/storefront/cart-page";
 describe("CartPage", () => {
   it("keeps totals unchanged and shows a clear message when the applied promo is invalid", () => {
     useCartMock.mockReturnValue({
-      items: [{ productId: "prod-1", name: "Yerba", priceCents: 2500, quantity: 2 }],
+      items: [{ productId: "prod-1", categoryId: "cat-1", name: "Yerba", priceCents: 2500, quantity: 2 }],
       promoCode: "PROMO-VENCIDA",
       applyPromoCode: vi.fn(),
       subtotalCents: 5000,
@@ -29,9 +29,7 @@ describe("CartPage", () => {
       message: undefined,
     });
 
-    const markup = renderToStaticMarkup(
-      <CartPage promotions={[]} productCategories={{ "prod-1": "cat-1" }} />,
-    );
+    const markup = renderToStaticMarkup(<CartPage promotions={[]} />);
 
     expect(markup).toContain("Ese promo ya no está disponible.");
     expect(markup).toContain(formatCurrency(5000));

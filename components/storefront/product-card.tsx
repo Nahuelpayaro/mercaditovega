@@ -12,8 +12,9 @@ type ProductCardProps = {
     name: string;
     shortDescription: string | null;
     priceCents: number;
+    compareAtCents?: number | null;
     stockMode?: "in_stock" | "out_of_stock";
-    category: { name: string };
+    category: { id: string; name: string };
     images: { url: string; alt: string }[];
   };
 };
@@ -27,9 +28,19 @@ export function ProductCard({ product }: ProductCardProps) {
       <Link href={`/producto/${product.slug}`}>
         <div className="relative aspect-square bg-background-muted">
           {image ? (
-            <Image src={image.url} alt={image.alt} fill className="object-cover transition duration-300 group-hover:scale-[1.03]" />
+            <Image
+              src={image.url}
+              alt={image.alt}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              className="object-cover transition duration-300 group-hover:scale-[1.03]"
+            />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Sin imagen</div>
+            <div className="flex h-full items-center justify-center bg-muted/30">
+              <svg className="size-10 text-muted-foreground/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 21h18M3.75 3h16.5A.75.75 0 0121 3.75v16.5a.75.75 0 01-.75.75H3.75A.75.75 0 013 20.25V3.75A.75.75 0 013.75 3z" />
+              </svg>
+            </div>
           )}
           <div className="absolute inset-x-2.5 top-2.5 flex items-start justify-between gap-2">
             <Badge className="px-2 py-0.5 text-[10px]">{product.category.name}</Badge>
@@ -52,15 +63,19 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Precio</p>
+              {product.compareAtCents && product.compareAtCents > product.priceCents ? (
+                <p className="text-xs text-muted-foreground line-through">{formatCurrency(product.compareAtCents)}</p>
+              ) : null}
               <p className="text-lg font-black text-foreground">{formatCurrency(product.priceCents)}</p>
             </div>
           </div>
           <AddToCartButton
             compact
-            product={{
-              id: product.id,
-              slug: product.slug,
-              name: product.name,
+              product={{
+                id: product.id,
+                categoryId: product.category.id,
+                slug: product.slug,
+                name: product.name,
               priceCents: product.priceCents,
               imageUrl: image?.url,
               isAvailable: available,

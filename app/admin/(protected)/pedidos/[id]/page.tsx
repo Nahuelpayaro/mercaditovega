@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { db } from "@/lib/db";
 import { ParamsAndSearchPageProps } from "@/lib/next-page-props";
 import { getAllowedTransitions } from "@/lib/orders/status-machine";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { updateOrderStatus } from "@/app/admin/pedidos/actions";
 
 type AdminOrderDetailPageProps = ParamsAndSearchPageProps<{ id: string }, { statusError?: string; statusSuccess?: string }>;
@@ -38,27 +38,27 @@ export default async function AdminOrderDetailPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Detalle de pedido" title={order.code} description="Revisá el pedido, validá el contexto del cliente y avanzá solo con transiciones permitidas." />
+      <PageHeader eyebrow="Detalle de pedido" title={order.code} description="Estado, cliente y próxima acción en una sola vista." />
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle>Resumen del pedido</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {statusError ? <FeedbackMessage tone="error" message={statusError} /> : null}
             {statusSuccess ? <FeedbackMessage tone="success" message={statusSuccess} /> : null}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <StatusBadge status={order.status} />
               <span className="text-sm text-muted-foreground">{formatDateTime(order.createdAt)}</span>
             </div>
             <div className="space-y-2">
               {items.map((item) => (
-                <div key={item.id} className="flex justify-between rounded-[22px] border border-border p-3">
-                  <span>
+                <div key={item.id} className="flex flex-col gap-2 rounded-[20px] border border-border p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-medium text-foreground">
                     {item.quantity} x {item.productName}
                   </span>
-                  <span>{formatCurrency(item.lineTotalCents)}</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(item.lineTotalCents)}</span>
                 </div>
               ))}
             </div>
@@ -72,7 +72,7 @@ export default async function AdminOrderDetailPage({
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle>Actualizar estado</CardTitle>
           </CardHeader>
           <CardContent>
@@ -96,7 +96,21 @@ export default async function AdminOrderDetailPage({
                 <Label htmlFor="internalNote">Nota interna</Label>
                 <Textarea id="internalNote" name="internalNote" defaultValue={order.internalNote ?? ""} />
               </div>
-              <Button disabled={!allowedTransitions.length}>Guardar</Button>
+              <div className="rounded-[22px] border border-border/70 bg-background-muted/60 p-4 text-sm text-muted-foreground">
+                <p className="font-semibold text-foreground">Se puede pasar a</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {allowedTransitions.length ? (
+                    allowedTransitions.map((status) => (
+                      <span key={status} className={cn("rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em]", status === order.status ? "border-brand/30 bg-brand/10 text-brand" : "border-border bg-white text-foreground")}>
+                        {status}
+                      </span>
+                    ))
+                  ) : (
+                    <span>Este pedido no tiene cambios de estado disponibles.</span>
+                  )}
+                </div>
+              </div>
+              <Button className="w-full sm:w-auto" disabled={!allowedTransitions.length}>Guardar</Button>
             </form>
           </CardContent>
         </Card>

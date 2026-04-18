@@ -2,6 +2,7 @@ export const CART_STORAGE_KEY = "negocio-cart";
 
 export type StoredCartItem = {
   productId: string;
+  categoryId?: string;
   slug: string;
   name: string;
   priceCents: number;

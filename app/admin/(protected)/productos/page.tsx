@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -12,19 +13,125 @@ import { cn } from "@/lib/utils";
 import { deleteCategory, saveCategory, setCategoryPublished } from "@/app/admin/productos/actions";
 import { ProductSelectionTable } from "@/app/admin/productos/product-selection-table";
 
-type AdminProductsPageProps = SearchPageProps<{ categoryId?: string; publication?: string }>;
-type ProductListItem = Awaited<ReturnType<typeof db.product.findMany>>[number];
+const PRODUCTS_PER_PAGE = 50;
+
+type AdminProductsPageProps = SearchPageProps<{ categoryId?: string; publication?: string; page?: string; q?: string }>;
+type ProductListItem = Awaited<ReturnType<typeof getAdminProductsPageItems>>[number];
+
+function parsePage(value?: string) {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return 1;
+  }
+
+  return parsed;
+}
+
+function buildAdminProductsHref({
+  categoryId = "all",
+  publication = "all",
+  page,
+  q,
+  hash,
+}: {
+  categoryId?: string;
+  publication?: string;
+  page?: number;
+  q?: string;
+  hash?: string;
+}) {
+  const searchParams = new URLSearchParams();
+
+  if (categoryId !== "all") {
+    searchParams.set("categoryId", categoryId);
+  }
+
+  if (publication !== "all") {
+    searchParams.set("publication", publication);
+  }
+
+  if (q) {
+    searchParams.set("q", q);
+  }
+
+  if (page && page > 1) {
+    searchParams.set("page", page.toString());
+  }
+
+  const query = searchParams.toString();
+
+  return `/admin/productos${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
+}
+
+function getAdminProductsWhere({
+  categoryId,
+  publication,
+  q,
+}: {
+  categoryId: string;
+  publication: string;
+  q: string;
+}): Prisma.ProductWhereInput {
+  return {
+    ...(categoryId !== "all" ? { categoryId } : {}),
+    ...(publication === "published" ? { isPublished: true } : {}),
+    ...(publication === "unpublished" ? { isPublished: false } : {}),
+    ...(q
+      ? {
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { sku: { contains: q, mode: "insensitive" } },
+        ],
+      }
+      : {}),
+  };
+}
+
+async function getAdminProductsPageItems(where: Prisma.ProductWhereInput, page: number) {
+  return db.product.findMany({
+    where,
+    select: {
+      id: true,
+      sku: true,
+      name: true,
+      priceCents: true,
+      stockQuantity: true,
+      isPublished: true,
+      isActive: true,
+      stockMode: true,
+      category: { select: { name: true } },
+    },
+    orderBy: [{ isPublished: "desc" }, { name: "asc" }],
+    skip: (page - 1) * PRODUCTS_PER_PAGE,
+    take: PRODUCTS_PER_PAGE,
+  });
+}
 
 async function getAdminProductCategories() {
   return db.category.findMany({
     orderBy: { name: "asc" },
-    include: { products: { select: { id: true, isPublished: true } } },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      isActive: true,
+      _count: { select: { products: true } },
+    },
+  });
+}
+
+async function getPublishedCategoryCounts() {
+  return db.product.groupBy({
+    by: ["categoryId"],
+    where: { isPublished: true },
+    _count: { _all: true },
   });
 }
 
 type AdminCategoryList = Awaited<ReturnType<typeof getAdminProductCategories>>;
 type AdminCategory = AdminCategoryList[number];
-type AdminCategoryProduct = AdminCategory["products"][number];
 type CategorySummary = AdminCategory & {
   totalProducts: number;
   publishedProducts: number;
@@ -34,24 +141,34 @@ type CategorySummary = AdminCategory & {
 export default async function AdminProductsPage({
   searchParams,
 }: AdminProductsPageProps) {
-  const { categoryId = "all", publication = "all" } = await searchParams;
+  const {
+    categoryId = "all",
+    publication = "all",
+    page: pageParam,
+    q: rawQuery = "",
+  } = await searchParams;
+  const q = rawQuery.trim();
+  const requestedPage = parsePage(pageParam);
+  const productWhere = getAdminProductsWhere({ categoryId, publication, q });
 
-  const productWhere = {
-    ...(categoryId !== "all" ? { categoryId } : {}),
-    ...(publication === "published" ? { isPublished: true } : {}),
-    ...(publication === "unpublished" ? { isPublished: false } : {}),
-  };
-
-  const [products, categories] = await Promise.all([
-    db.product.findMany({ where: productWhere, include: { category: true }, orderBy: [{ isPublished: "desc" }, { name: "asc" }] }),
+  const [categories, publishedCategoryCounts, filteredTotalProducts] = await Promise.all([
     getAdminProductCategories(),
+    getPublishedCategoryCounts(),
+    db.product.count({ where: productWhere }),
   ]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTotalProducts / PRODUCTS_PER_PAGE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const products = await getAdminProductsPageItems(productWhere, currentPage);
   const typedProducts: ProductListItem[] = products;
   const typedCategories: AdminCategory[] = categories;
+  const publishedCategoryCountById = new Map(
+    publishedCategoryCounts.map((entry) => [entry.categoryId, entry._count._all]),
+  );
 
   const categorySummaries: CategorySummary[] = typedCategories.map((category) => {
-    const totalProducts = category.products.length;
-    const publishedProducts = (category.products as AdminCategoryProduct[]).filter((product) => product.isPublished).length;
+    const totalProducts = category._count.products;
+    const publishedProducts = publishedCategoryCountById.get(category.id) ?? 0;
 
     return {
       ...category,
@@ -67,40 +184,33 @@ export default async function AdminProductsPage({
   const selectedCategory = categorySummaries.find((category) => category.id === categoryId) ?? null;
   const filteredPublishedProducts = typedProducts.filter((product) => product.isPublished).length;
   const filteredUnpublishedProducts = typedProducts.length - filteredPublishedProducts;
-  const redirectToSearchParams = new URLSearchParams();
-
-  if (categoryId !== "all") {
-    redirectToSearchParams.set("categoryId", categoryId);
-  }
-
-  if (publication !== "all") {
-    redirectToSearchParams.set("publication", publication);
-  }
-
-  const redirectTo = `/admin/productos${redirectToSearchParams.toString() ? `?${redirectToSearchParams.toString()}` : ""}#items`;
+  const listStart = filteredTotalProducts === 0 ? 0 : (currentPage - 1) * PRODUCTS_PER_PAGE + 1;
+  const listEnd = filteredTotalProducts === 0 ? 0 : listStart + typedProducts.length - 1;
+  const redirectTo = buildAdminProductsHref({ categoryId, publication, q, page: currentPage, hash: "items" });
+  const resetFiltersHref = buildAdminProductsHref({ hash: "items" });
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Catálogo"
         title="Productos"
-        description="Gestioná catálogo y categorías con más contexto visual y menos fricción operativa."
-        actions={<Link href="/admin/productos/nuevo" className={buttonVariants()}>Nuevo producto</Link>}
+        description="Stock, publicación y categorías con foco en decidir rápido."
+        actions={<Link href="/admin/productos/nuevo" className={buttonVariants({ className: "w-full sm:w-auto" })}>Nuevo producto</Link>}
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle>Resumen por categoría</CardTitle>
           <p className="text-sm text-muted-foreground">
-            {totalPublishedProducts} publicados de {totalProducts} productos. Usá acciones masivas para destrabar carga real sin entrar ítem por ítem.
+            {totalPublishedProducts} publicados de {totalProducts} productos.
           </p>
         </CardHeader>
-        <CardContent className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <CardContent className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {categorySummaries.map((category) => (
             <div
               key={category.id}
               className={cn(
-                "space-y-4 overflow-hidden rounded-[24px] border border-border bg-white/80 p-4 shadow-[0_12px_28px_rgba(87,52,22,0.06)]",
+                "admin-soft-panel space-y-4 overflow-hidden rounded-[22px] p-4",
                 selectedCategory?.id === category.id && "border-brand/40 bg-brand/5 shadow-[0_18px_45px_rgba(214,109,49,0.12)]",
               )}
             >
@@ -108,8 +218,8 @@ export default async function AdminProductsPage({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="break-words text-lg font-semibold leading-6 text-foreground [overflow-wrap:anywhere]">{category.name}</p>
-                    <p className="break-words text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{category.description || "Sin descripción"}</p>
-                  </div>
+                     <p className="break-words text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{category.description || "Sin descripción"}</p>
+                   </div>
                   <Badge className={cn("shrink-0 whitespace-nowrap", category.isActive ? "border-cyan-200 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-slate-100 text-slate-700")}>
                     {category.isActive ? "Activa" : "Inactiva"}
                   </Badge>
@@ -146,7 +256,7 @@ export default async function AdminProductsPage({
                     Despublicar todo
                   </Button>
                 </form>
-                <Link href={`/admin/productos?categoryId=${category.id}#items`} className={cn(buttonVariants({ variant: selectedCategory?.id === category.id ? "outline" : "ghost", size: "sm" }), "w-full") }>
+                <Link href={buildAdminProductsHref({ categoryId: category.id, publication, q, hash: "items" })} className={cn(buttonVariants({ variant: selectedCategory?.id === category.id ? "outline" : "ghost", size: "sm" }), "w-full") }>
                   {selectedCategory?.id === category.id ? "Viendo ítems" : "Ver ítems"}
                 </Link>
               </div>
@@ -156,77 +266,77 @@ export default async function AdminProductsPage({
       </Card>
 
       <Card id="items">
-        <CardHeader>
-          <CardTitle>{selectedCategory ? `Ítems de ${selectedCategory.name}` : "Listado"}</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle>{selectedCategory ? selectedCategory.name : "Listado"}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Mostrando {products.length} {activeFilterLabel} {categoryId === "all" ? "del catálogo completo" : "de la categoría seleccionada"}.
-            {selectedCategory ? ` Desde acá decidís producto por producto sin perder la acción masiva de ${selectedCategory.name}.` : " Elegí una categoría para bajar del resumen al detalle sin perder contexto."}
+            {filteredTotalProducts} {activeFilterLabel}{selectedCategory ? ` en ${selectedCategory.name}` : ""} · página {currentPage} de {totalPages}
           </p>
         </CardHeader>
         <CardContent className="space-y-4 overflow-x-auto">
-          <div className="space-y-3 rounded-[24px] border border-border bg-white/80 p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href="/admin/productos#items"
-                className={buttonVariants({ variant: categoryId === "all" ? "secondary" : "ghost", size: "sm" })}
-              >
-                Todas las categorías
-              </Link>
-              {categorySummaries.map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/admin/productos?categoryId=${category.id}#items`}
-                  className={buttonVariants({ variant: category.id === categoryId ? "secondary" : "ghost", size: "sm" })}
-                >
-                  {category.name}
-                  <span className="rounded-full bg-black/8 px-2 py-0.5 text-[11px] font-bold text-current">{category.totalProducts}</span>
-                </Link>
-              ))}
-            </div>
 
-            {selectedCategory ? (
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-2xl border border-border/70 bg-background-muted p-3">
-                  <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Categoría activa</p>
-                  <p className="text-lg font-bold text-foreground">{selectedCategory.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedCategory.description || "Sin descripción"}</p>
-                </div>
-                <div className="rounded-2xl border border-green-100 bg-green-50/70 p-3">
-                  <p className="text-xs uppercase tracking-[0.14em] text-green-700">Publicados en vista</p>
-                  <p className="text-lg font-bold text-green-700">{filteredPublishedProducts}</p>
-                </div>
-                <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-3">
-                  <p className="text-xs uppercase tracking-[0.14em] text-amber-700">Sin publicar en vista</p>
-                  <p className="text-lg font-bold text-amber-700">{filteredUnpublishedProducts}</p>
-                </div>
-              </div>
-            ) : null}
+          {/* Pills de categoría */}
+          <div className="admin-chip-scroll flex gap-2 overflow-x-auto pb-1">
+            <Link
+              href={buildAdminProductsHref({ publication, q, hash: "items" })}
+              className={cn(
+                "inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-all duration-200",
+                categoryId === "all"
+                  ? "bg-brand text-white shadow-[0_16px_30px_rgba(214,109,49,0.26)]"
+                  : "text-muted-foreground hover:bg-background-muted hover:text-foreground",
+              )}
+            >
+              Todas
+            </Link>
+            {categorySummaries.map((category) => (
+              <Link
+                key={category.id}
+                href={buildAdminProductsHref({ categoryId: category.id, publication, q, hash: "items" })}
+                className={cn(
+                  "inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-all duration-200",
+                  category.id === categoryId
+                    ? "bg-brand text-white shadow-[0_16px_30px_rgba(214,109,49,0.26)]"
+                    : "text-muted-foreground hover:bg-background-muted hover:text-foreground",
+                )}
+              >
+                {category.name}
+                <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", category.id === categoryId ? "bg-white/20 text-white" : "bg-black/8 text-current")}>{category.totalProducts}</span>
+              </Link>
+            ))}
           </div>
 
-          <form className="grid gap-3 rounded-[24px] border border-border bg-white/80 p-4 md:grid-cols-[1fr_220px_140px]">
-            <div>
-              <Label htmlFor="categoryId">Filtrar por categoría</Label>
-              <Select id="categoryId" name="categoryId" defaultValue={categoryId}>
-                <option value="all">Todas</option>
-                {typedCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </Select>
+          {/* Toolbar: búsqueda + publicación + paginación en una línea */}
+          <form className="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="categoryId" value={categoryId} />
+            <div className="min-w-44 flex-1">
+              <Input name="q" defaultValue={q} placeholder="Nombre o SKU..." />
             </div>
-            <div>
-              <Label htmlFor="publication">Publicación</Label>
-              <Select id="publication" name="publication" defaultValue={publication}>
-                <option value="all">Todos</option>
-                <option value="published">Publicados</option>
-                <option value="unpublished">No publicados</option>
-              </Select>
-            </div>
-            <div className="flex items-end gap-2">
-              <Button type="submit">Filtrar</Button>
-              <Link href="/admin/productos" className={buttonVariants({ variant: "outline" })}>
+            <Select name="publication" defaultValue={publication} className="w-40">
+              <option value="all">Publicación</option>
+              <option value="published">Publicados</option>
+              <option value="unpublished">Sin publicar</option>
+            </Select>
+            <Button type="submit" size="sm">Buscar</Button>
+            {(q || publication !== "all") && (
+              <Link href={resetFiltersHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
                 Limpiar
+              </Link>
+            )}
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="hidden text-xs text-muted-foreground sm:inline">{listStart}–{listEnd} de {filteredTotalProducts}</span>
+              <Link
+                href={buildAdminProductsHref({ categoryId, publication, q, page: Math.max(1, currentPage - 1), hash: "items" })}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), currentPage === 1 && "pointer-events-none opacity-40")}
+              >
+                ‹
+              </Link>
+              <span className="min-w-12 rounded-2xl border border-border bg-background px-2 py-1.5 text-center text-sm font-medium">
+                {currentPage}/{totalPages}
+              </span>
+              <Link
+                href={buildAdminProductsHref({ categoryId, publication, q, page: Math.min(totalPages, currentPage + 1), hash: "items" })}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), currentPage === totalPages && "pointer-events-none opacity-40")}
+              >
+                ›
               </Link>
             </div>
           </form>
@@ -236,11 +346,11 @@ export default async function AdminProductsPage({
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle>Categorías</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form action={saveCategory} className="grid gap-3 rounded-[24px] border border-border bg-white/80 p-4 md:grid-cols-4">
+          <form action={saveCategory} className="grid gap-3 rounded-[22px] border border-border bg-white/80 p-4 md:grid-cols-4">
             <div>
               <Label htmlFor="name">Nombre</Label>
               <Input id="name" name="name" required />
@@ -253,26 +363,26 @@ export default async function AdminProductsPage({
               <Label htmlFor="description">Descripción</Label>
               <Input id="description" name="description" />
             </div>
-            <div className="flex items-end gap-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="isActive" defaultChecked /> Activa
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
+              <label className="flex min-h-11 items-center gap-3 text-sm">
+                <input className="size-5 rounded border-border" type="checkbox" name="isActive" defaultChecked /> Activa
               </label>
-              <Button>Guardar</Button>
+              <Button className="w-full sm:w-auto">Guardar</Button>
             </div>
           </form>
 
           {typedCategories.map((category) => (
-            <form key={category.id} action={saveCategory} className="grid gap-3 rounded-[24px] border border-border bg-white/80 p-4 md:grid-cols-5">
+            <form key={category.id} action={saveCategory} className="grid gap-3 rounded-[22px] border border-border bg-white/80 p-4 md:grid-cols-5">
               <input type="hidden" name="id" value={category.id} />
               <Input name="name" defaultValue={category.name} required />
               <Input name="slug" defaultValue={category.slug} />
               <Input name="description" defaultValue={category.description ?? ""} />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="isActive" defaultChecked={category.isActive} /> Activa
+              <label className="flex min-h-11 items-center gap-3 text-sm">
+                <input className="size-5 rounded border-border" type="checkbox" name="isActive" defaultChecked={category.isActive} /> Activa
               </label>
-              <div className="flex gap-2">
-                <Button>Guardar</Button>
-                <button formAction={deleteCategory} className="rounded-xl border px-4 text-sm">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button className="w-full sm:w-auto">Guardar</Button>
+                <button formAction={deleteCategory} className="min-h-11 rounded-2xl border px-4 text-sm font-semibold">
                   Eliminar
                 </button>
               </div>

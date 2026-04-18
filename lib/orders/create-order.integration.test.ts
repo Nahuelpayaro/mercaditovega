@@ -48,14 +48,11 @@ const { dbMock, paymentIntentMock, state } = vi.hoisted(() => {
             (product) =>
               where.id.in.includes(product.id) && product.isActive === where.isActive && product.isPublished === where.isPublished && product.stockMode === where.stockMode,
           )
-          .map((product) => ({
-            ...product,
-            category: state.categories.find((category) => category.id === product.categoryId)!,
-          })),
+          .map((product) => ({ ...product })),
       ),
     },
     promotion: {
-      findMany: vi.fn(async () => state.promotions),
+      findUnique: vi.fn(async ({ where }: { where: { code: string } }) => state.promotions.find((promotion) => promotion.code === where.code) ?? null),
     },
     customer: {
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
@@ -198,6 +195,10 @@ describe("createOrder integration seam", () => {
     expect(order.whatsappUrl).toContain("https://wa.me/");
     expect(decodeURIComponent(order.whatsappUrl ?? "")).toContain("ALM-TEST1");
     expect(paymentIntentMock).toHaveBeenCalledWith("ord-1");
+    expect(dbMock.promotion.findUnique).toHaveBeenCalledWith({
+      where: { code: "BARRIO10" },
+      select: expect.any(Object),
+    });
   });
 
   it("rejects invalid promo submissions before persisting the order", async () => {
@@ -232,5 +233,17 @@ describe("createOrder integration seam", () => {
         items: [{ productId: "prod-1", name: "Yerba", slug: "yerba", priceCents: 2500, quantity: 1 }],
       }),
     ).rejects.toThrow("Hay productos no disponibles en tu carrito.");
+  });
+
+  it("skips promo lookup entirely when the cart has no promo code", async () => {
+    await createOrder({
+      fullName: "Ana Pérez",
+      email: "ana@example.com",
+      fulfillmentType: "pickup",
+      paymentMethod: "cash",
+      items: [{ productId: "prod-1", name: "Yerba", slug: "yerba", priceCents: 2500, quantity: 1 }],
+    });
+
+    expect(dbMock.promotion.findUnique).not.toHaveBeenCalled();
   });
 });

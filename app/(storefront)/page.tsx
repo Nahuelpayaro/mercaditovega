@@ -7,6 +7,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront/product-card";
 import { getHomeData } from "@/lib/storefront";
 
+export const revalidate = 120;
+
 type HomeData = Awaited<ReturnType<typeof getHomeData>>;
 type HomeCategory = HomeData["categories"][number];
 type HomePromotion = HomeData["promotions"][number];

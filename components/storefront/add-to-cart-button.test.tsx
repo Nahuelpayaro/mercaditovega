@@ -21,6 +21,7 @@ describe("AddToCartButton", () => {
     const button = AddToCartButton({
       product: {
         id: "prod-1",
+        categoryId: "cat-1",
         slug: "yerba",
         name: "Yerba",
         priceCents: 2500,
@@ -36,6 +37,7 @@ describe("AddToCartButton", () => {
 
     expect(addItemMock).toHaveBeenCalledWith({
       productId: "prod-1",
+      categoryId: "cat-1",
       slug: "yerba",
       name: "Yerba",
       priceCents: 2500,
@@ -49,6 +51,7 @@ describe("AddToCartButton", () => {
     const button = AddToCartButton({
       product: {
         id: "prod-2",
+        categoryId: "cat-2",
         slug: "sin-stock",
         name: "Sin stock",
         priceCents: 1800,

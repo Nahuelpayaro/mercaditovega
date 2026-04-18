@@ -1,11 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+  extensions = [pg_trgm]
 }
 
 enum StockMode {
@@ -55,6 +57,8 @@ model Category {
   promotions  Promotion[] @relation("PromotionCategories")
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+
+  @@index([isActive, name], map: "Category_isActive_name_idx")
 }
 
 model Product {
@@ -82,6 +86,12 @@ model Product {
   orderItems        OrderItem[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+
+  @@index([categoryId, isPublished, name], map: "Product_categoryId_isPublished_name_idx")
+  @@index([isActive, isPublished, stockMode, isFeatured, name], map: "Product_storefront_visibility_idx")
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Product_name_trgm_idx")
+  @@index([sku(ops: raw("gin_trgm_ops"))], type: Gin, map: "Product_sku_trgm_idx")
+  @@index([description(ops: raw("gin_trgm_ops"))], type: Gin, map: "Product_description_trgm_idx")
 }
 
 model ProductImage {
@@ -92,6 +102,8 @@ model ProductImage {
   position  Int      @default(0)
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([productId, position], map: "ProductImage_productId_position_idx")
 }
 
 model Promotion {
@@ -111,6 +123,8 @@ model Promotion {
   orders           Order[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+
+  @@index([isActive, startsAt, endsAt], map: "Promotion_isActive_startsAt_endsAt_idx")
 }
 
 model Customer {
@@ -122,6 +136,8 @@ model Customer {
   orders      Order[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt], map: "Customer_updatedAt_idx")
 }
 
 model Order {
@@ -147,6 +163,9 @@ model Order {
   items            OrderItem[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+
+  @@index([createdAt], map: "Order_createdAt_idx")
+  @@index([customerId, createdAt], map: "Order_customerId_createdAt_idx")
 }
 
 model OrderItem {
@@ -160,4 +179,6 @@ model OrderItem {
   lineTotalCents   Int
   order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product          Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId], map: "OrderItem_orderId_idx")
 }

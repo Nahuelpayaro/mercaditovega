@@ -1,6 +1,8 @@
 import { CheckoutForm } from "@/components/storefront/checkout-form";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const revalidate = 120;
+
 export default async function CheckoutPage() {
   return (
     <div className="space-y-4">

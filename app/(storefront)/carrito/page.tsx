@@ -1,25 +1,16 @@
 import { CartPage } from "@/components/storefront/cart-page";
 import { PageHeader } from "@/components/ui/page-header";
-import { db } from "@/lib/db";
 import { getActivePromotions } from "@/lib/storefront";
 
-type ProductCategoryMapItem = { id: string; categoryId: string };
-
-function toProductCategoryMap(items: ProductCategoryMapItem[]): Record<string, string> {
-  return Object.fromEntries(items.map((item) => [item.id, item.categoryId] as const)) as Record<string, string>;
-}
+export const revalidate = 120;
 
 export default async function CartRoute() {
-  const [promotions, products] = await Promise.all([
-    getActivePromotions(),
-    db.product.findMany({ select: { id: true, categoryId: true } }),
-  ]);
-  const typedProducts: ProductCategoryMapItem[] = products;
+  const promotions = await getActivePromotions();
 
   return (
     <div className="space-y-4">
       <PageHeader eyebrow="Carrito" title="Tu pedido en curso" description="Se guarda en este dispositivo para que sigas después, sin volver a empezar." />
-      <CartPage promotions={promotions} productCategories={toProductCategoryMap(typedProducts)} />
+      <CartPage promotions={promotions} />
     </div>
   );
 }

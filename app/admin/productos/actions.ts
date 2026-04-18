@@ -88,14 +88,17 @@ export async function saveProduct(formData: FormData) {
       isActive: input.isActive,
     };
 
+    const imageChanged = formData.get("imageChanged") === "true";
     let productId = input.id;
 
     if (input.id) {
       await db.product.update({ where: { id: input.id }, data });
 
-      if (input.imageUrl) {
+      if (imageChanged) {
         await db.productImage.deleteMany({ where: { productId: input.id } });
-        await db.productImage.create({ data: { productId: input.id, url: input.imageUrl, alt: input.imageAlt ?? input.name } });
+        if (input.imageUrl) {
+          await db.productImage.create({ data: { productId: input.id, url: input.imageUrl, alt: input.imageAlt ?? input.name } });
+        }
       }
     } else {
       const product = await db.product.create({ data });

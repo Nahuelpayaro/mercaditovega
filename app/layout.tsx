@@ -3,8 +3,15 @@ import "@/app/globals.css";
 import { publicEnv } from "@/lib/env";
 
 export const metadata: Metadata = {
-  title: publicEnv.NEXT_PUBLIC_STORE_NAME,
+  title: {
+    default: publicEnv.NEXT_PUBLIC_STORE_NAME,
+    template: `%s — ${publicEnv.NEXT_PUBLIC_STORE_NAME}`,
+  },
   description: "Almacén barrial con pedidos por WhatsApp.",
+  openGraph: {
+    siteName: publicEnv.NEXT_PUBLIC_STORE_NAME,
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

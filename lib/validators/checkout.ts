@@ -3,6 +3,7 @@ import { cleanPhone } from "@/lib/utils";
 
 export const cartItemSchema = z.object({
   productId: z.string().min(1),
+  categoryId: z.string().min(1).optional(),
   name: z.string().min(1),
   slug: z.string().min(1),
   priceCents: z.number().int().nonnegative(),

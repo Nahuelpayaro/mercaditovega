@@ -49,7 +49,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           const existing = current.find((entry) => entry.productId === item.productId);
           if (existing) {
             return current.map((entry) =>
-              entry.productId === item.productId ? { ...entry, quantity: entry.quantity + 1 } : entry,
+              entry.productId === item.productId ? { ...entry, categoryId: entry.categoryId ?? item.categoryId, quantity: entry.quantity + 1 } : entry,
             );
           }
 
