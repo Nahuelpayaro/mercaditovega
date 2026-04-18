@@ -190,6 +190,7 @@ export async function deleteProduct(formData: FormData) {
   if (!id) return;
   await db.product.delete({ where: { id } });
   revalidateCatalogSurfaces();
+  redirect("/admin/productos?statusSuccess=" + encodeURIComponent("Producto eliminado correctamente."));
 }
 
 export async function saveCategory(formData: FormData) {
