@@ -17,9 +17,8 @@ type ProductRow = {
   isPublished: boolean;
   isActive: boolean;
   stockMode: string;
-  category: {
-    name: string;
-  };
+  category: { name: string };
+  images: { url: string }[];
 };
 
 const publicationBadgeClassName: Record<string, string> = {
@@ -126,9 +125,16 @@ export function ProductSelectionTable({ products, redirectTo }: { products: Prod
                         <span className="block text-sm text-muted-foreground">{product.sku ?? "Sin SKU"} · {product.category.name}</span>
                       </span>
                     </label>
-                    <Badge className={product.isPublished ? publicationBadgeClassName.published : publicationBadgeClassName.unpublished}>
-                      {product.isPublished ? "Publicado" : "Sin publicar"}
-                    </Badge>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <Badge className={product.isPublished ? publicationBadgeClassName.published : publicationBadgeClassName.unpublished}>
+                        {product.isPublished ? "Publicado" : "Sin publicar"}
+                      </Badge>
+                      {product.images.length > 0 ? (
+                        <span className="text-[11px] font-medium text-green-600">📷 Con foto</span>
+                      ) : (
+                        <span className="text-[11px] font-medium text-amber-600">Sin foto</span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mt-4 grid gap-3 rounded-[20px] border border-border/70 bg-background-muted/60 p-3 text-sm">
@@ -178,6 +184,7 @@ export function ProductSelectionTable({ products, redirectTo }: { products: Prod
                     />
                   </TH>
                   <TH>Código</TH>
+                  <TH>Foto</TH>
                   <TH>Producto</TH>
                   <TH>Categoría</TH>
                   <TH>Precio</TH>
@@ -203,6 +210,13 @@ export function ProductSelectionTable({ products, redirectTo }: { products: Prod
                         />
                       </TD>
                       <TD>{product.sku ?? "—"}</TD>
+                      <TD>
+                        {product.images.length > 0 ? (
+                          <span className="text-xs font-medium text-green-600">✓</span>
+                        ) : (
+                          <span className="text-xs font-medium text-amber-500">—</span>
+                        )}
+                      </TD>
                       <TD>{product.name}</TD>
                       <TD>{product.category.name}</TD>
                       <TD>{formatCurrency(product.priceCents)}</TD>

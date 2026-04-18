@@ -110,7 +110,7 @@ export async function saveProduct(formData: FormData) {
     }
 
     revalidateCatalogSurfaces();
-    redirectPath = `/admin/productos/${productId}?statusSuccess=${encodeURIComponent("Producto guardado correctamente.")}`;
+    redirectPath = `/admin/productos?statusSuccess=${encodeURIComponent("Producto guardado correctamente.")}`;
   } catch (error) {
     const message = error instanceof ZodError
       ? error.issues[0]?.message || "Revisá los datos del producto."

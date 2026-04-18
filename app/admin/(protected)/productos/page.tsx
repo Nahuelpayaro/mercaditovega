@@ -15,7 +15,7 @@ import { ProductSelectionTable } from "@/app/admin/productos/product-selection-t
 
 const PRODUCTS_PER_PAGE = 50;
 
-type AdminProductsPageProps = SearchPageProps<{ categoryId?: string; publication?: string; page?: string; q?: string }>;
+type AdminProductsPageProps = SearchPageProps<{ categoryId?: string; publication?: string; page?: string; q?: string; statusSuccess?: string }>;
 type ProductListItem = Awaited<ReturnType<typeof getAdminProductsPageItems>>[number];
 
 function parsePage(value?: string) {
@@ -101,6 +101,7 @@ async function getAdminProductsPageItems(where: Prisma.ProductWhereInput, page: 
       isActive: true,
       stockMode: true,
       category: { select: { name: true } },
+      images: { select: { url: true }, take: 1 },
     },
     orderBy: [{ isPublished: "desc" }, { name: "asc" }],
     skip: (page - 1) * PRODUCTS_PER_PAGE,
@@ -146,6 +147,7 @@ export default async function AdminProductsPage({
     publication = "all",
     page: pageParam,
     q: rawQuery = "",
+    statusSuccess,
   } = await searchParams;
   const q = rawQuery.trim();
   const requestedPage = parsePage(pageParam);
@@ -197,6 +199,12 @@ export default async function AdminProductsPage({
         description="Stock, publicación y categorías con foco en decidir rápido."
         actions={<Link href="/admin/productos/nuevo" className={buttonVariants({ className: "w-full sm:w-auto" })}>Nuevo producto</Link>}
       />
+
+      {statusSuccess ? (
+        <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {statusSuccess}
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader className="pb-3">
